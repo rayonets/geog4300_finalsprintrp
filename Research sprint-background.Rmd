@@ -1,0 +1,96 @@
+---
+title: "Research sprint: your assignment"
+output:   
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Background
+During the COVID-19 pandemic, the U.S. Census create the [Household Pulse Survey](https://www.census.gov/data/experimental-data-products/household-pulse-survey.html) to get a quick response from households on various hardships, including financial burdens, food insecurity, social isolation, and health concerns. These surveys were administered weekly and have continued into 2024.
+
+The Census provides publicly accessible individual level microdata from the surveys for researchers to use. These data do not include personally identifiable information, but they can be used to create your own analysis at state or even city level. You can see the full list of files [on this website](https://www.census.gov/programs-surveys/household-pulse-survey/data/datasets.html).
+
+## The dataset
+
+The `data` folder of this repo contains table versions of this data for 2023. Your group's task is to ask and answer a research question based primarily on this dataset. You can load the `pulse2023_data.dictionary_CSV_63.xlsx` file to see the list of available variables, but here are a few that might be of particular interest:
+
+* Changes to rent amount (`RENTCHNG`)
+* Potential of eviction in the next two months (`EVICT`)
+* Potential of foreclosure in the next two months (`FORCLOSE`)
+* Various factors creating pressure to move (`MOVEWHY1`-`MOVEWHY8`--dummy variables)
+* Displacement due to natural disaster (`ND_DISPLACE`)
+* Stress from price changes (`PRICESTRESS`)
+* Teleworking prevalence (`TWDAYS`)
+* Receipt of a COVID-19 vaccine (`RECVDVACC`)
+* Symptoms of long COVID (`LONGCOVID`)
+
+In addition, the files include multiple demographic variables, including age, gender, gender identity, sexual orientation, household type, and employment sectors. These may be useful grouping or predictive variables in your analysis.
+
+## Your task
+For this short assignment, your job is to ask and answer a question using only/primarily this dataset. Here's some sample questions:
+
+* Are there racial differences in those displaced due to natural disaster?
+* Are there gendered differences in teleworking?
+* How does the prevalence of long COVID vary by age, race, and occupation? 
+
+We'll do a lot of brainstorming in class, and you'll get into groups based on a shared question. It's a question that should require both descriptive and inferential statistics to answer.
+
+## Data prep and weights
+The data files are in the census_pulse_2023 folder and are currently separated by week, in case you want to compare over time. But it's easy to load them into one big data frame:
+
+```{r message=FALSE}
+files<-list.files("data",recursive = TRUE,full.names = TRUE,pattern="puf")
+
+pulse<-map_df(files,read_csv)
+```
+
+These data include household and individual level weights (the `HWEIGHT` and `PWEIGHT` variables), which simply indicate how many households or people that observation represents. So a `PWEIGHT` of 1124 means that this one person is used to represent 1,124 people. The decision on which weights to use depends on the variable. See the "Universe" field in the spreadsheet to see if it's person-level or household-level data. 
+
+In practice, it's easy to just use these weights as counts. So for example, here's the count of all people displaced by natural disaster in the dataset:
+
+```{r message=FALSE}
+ndist_count<-pulse %>%
+  group_by(ND_DISPLACE) %>%
+  summarise(count=sum(PWEIGHT))
+```
+
+If you wanted to break that out by state, you could just add another grouping variable. This code also converts the result to a percentage and graphs it.
+
+```{r message=FALSE}
+ndist_count_st<-pulse %>%
+  group_by(ND_DISPLACE,EST_ST,REGION) %>%
+  mutate(REGION=as.character(REGION)) %>%
+  summarise(count=sum(PWEIGHT)) %>%
+  pivot_wider(names_from=ND_DISPLACE,values_from=count) %>%
+  mutate(pct_disp=`1`/(`1`+`2`)*100)
+
+ggplot(ndist_count_st,aes(x=pct_disp,
+                          y=reorder(EST_ST,pct_disp),
+                          fill=REGION))+
+  geom_bar(stat="identity")+
+  xlab("Pct displaced")+ylab("State FIPS")
+```
+
+You can look back at Lab 4 as a reference, as we worked with similar CPS data in that case.
+
+## The deliverable
+Create a new Rmd document in this repo that you can use to do your analysis and show the results. This document should have the following format:
+
+* Research question (and explanation for why it matters)
+* Methods and data, especially if using other data sources
+* Analysis
+* Discussion and conclusion
+
+The final report should use both descriptive and inferential statistics, as well as at least two visualizations. Including at least one map is strongly encouraged but not essential.
+
+You should be prepared to present your findings at our finals class--you'll have about 5 minutes to talk about your project and results. No need for slides--you can just knit your final document and walk us through it.
