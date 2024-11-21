@@ -1,0 +1,39 @@
+---
+title: "Research Sprint Phillips"
+output: html_document
+date: "2024-11-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+```
+
+## Research Question
+
+Is there a relationship between race and homeowner status across all respondents? P
+
+```{r}
+#Step 1: loading massive dataframe 
+files<-list.files("~/Downloads/rayonets geog4300_finalsprintrp 8f28b1ceec36cac35557caaa4490f543e239780a data-census_pulse_2023",recursive = TRUE,full.names = TRUE,pattern="puf")
+
+pulse<-map_df(files,read_csv)
+
+#Step 2: filtering out invalid responses + separate TENURE counts by RRACE
+validtenure1 <-pulse %>%
+  filter(TENURE > 0) %>%
+  group_by(TENURE,RRACE) %>%
+  mutate(RRACE=as.character(RRACE)) %>%
+  summarise(count=sum(PWEIGHT)) %>%
+  pivot_wider(names_from=TENURE,values_from=count)
+
+kable(validtenure1)
+  
+```
+
+## 
+
+```{r}
+```
+
